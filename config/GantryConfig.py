@@ -97,6 +97,14 @@ class _EnvironmentVariable(CFObject):
   def __init__(self):
     super(_EnvironmentVariable, self).__init__('Environment Variable')
 
+class _RestartPolicy(CFObject):
+  """ A network link required by a component. """
+  name = CFField('name').name_field()
+  alias = CFField('maximumRetryCount').value_field()
+
+  def __init__(self):
+    super(_RestartPolicy, self).__init__('Restart Policy')
+
 
 class _Component(CFObject):
   """ A single gantry component. """
@@ -116,6 +124,7 @@ class _Component(CFObject):
   defined_component_links = CFField('defineComponentLinks').list_of(_DefinedComponentLink).default([])
   required_component_links = CFField('requireComponentLinks').list_of(_RequiredComponentLink).default([])
   environment_variables = CFField('environmentVariables').list_of(_EnvironmentVariable).default([])
+  restart_policy = CFField('restartPolicy').kind(dict).default({})
 
   connection_check = _HealthCheck().build({'kind': 'connection'})
   termination_checks = CFField('terminationChecks').list_of(_HealthCheck).default([connection_check])
@@ -133,6 +142,13 @@ class _Component(CFObject):
       return None
 
     return self.user
+
+  def getRestartPolicy(self):
+    """ Returns the host config. """
+    if not self.restart_policy:
+      return None
+
+    return self.restart_policy
 
   def getCommand(self):
     """ Returns the command string to run on component startup or None if none. """
@@ -167,7 +183,7 @@ class _Component(CFObject):
   def getComponentLinks(self):
     """ Returns a dict of aliases for component links required, with the values being the links' names. """
     return {l.alias: l.name for l in self.required_component_links}
-    
+
   def getEnvironmentVariables(self):
     """ Returns a dict of the defined environments variables and their values. """
     return {v.name: v.value for v in self.environment_variables}
