@@ -21,15 +21,15 @@ class Component(object):
 
     # The underlying config for the component.
     self.config = config
-    
+
   def applyConfigOverrides(self, config_overrides):
     """ Applies the list of configuration overrides to this component's config.
-    
+
         Format: ['Name=Value', 'Name.SubName=Value']
     """
     for override in config_overrides:
       self.config.applyOverride(override)
-    
+
   def getName(self):
     """ Returns the name of the component. """
     return self.config.name
@@ -223,9 +223,7 @@ class Component(object):
     if self.config.privileged:
       report('Container will be run in privileged mode', component=self)
 
-    client.start(container, binds=self.config.getBindings(container['Id']),
-                 volumes_from=self.config.volumes_from,
-                 privileged=self.config.privileged)
+    client.start(container)
 
     # Health check until the instance is ready.
     report('Waiting for health checks...', component=self)
@@ -309,12 +307,17 @@ class Component(object):
 
     self.logger.debug('Starting container for component %s with command %s', self.getName(),
                       command)
-                      
+
     container = client.create_container(self.config.getFullImage(), command,
                                         user=self.config.getUser(),
                                         volumes=self.config.getVolumes(),
-                                        ports=[str(p) for p in self.config.getContainerPorts()],
-                                        environment=self.calculateEnvForComponent())
+                                        environment=self.calculateEnvForComponent(),
+					host_config=client.create_host_config(restart_policy=self.config.getRestartPolicy(),
+                                                                              volumes_from=self.config.volumes_from,
+                                                                              binds={ b.external: { "bind": b.volume } for b in self.config.bindings },
+                                                                              privileged=self.config.privileged
+                                                                             )
+                                       )
 
     return container
 
